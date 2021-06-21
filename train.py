@@ -13,7 +13,7 @@ inputs = feature_extractor(images=[image], annotations=[{"annotations": [{"bbox"
 # image_id对应images里面图片的索引
 
 outputs = model(**inputs)
-
+#===========然后玩loss就行了.
 # model predicts bounding boxes and corresponding COCO classes
 logits = outputs.logits
 bboxes = outputs.pred_boxes
