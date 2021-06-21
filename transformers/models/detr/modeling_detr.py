@@ -1416,14 +1416,14 @@ class DetrForObjectDetection(DetrPreTrainedModel):
 
         # class logits + predicted bounding boxes
         logits = self.class_labels_classifier(sequence_output)
-        pred_boxes = self.bbox_predictor(sequence_output).sigmoid()
+        pred_boxes = self.bbox_predictor(sequence_output).sigmoid() # 0--1之间.
 
         loss, loss_dict, auxiliary_outputs = None, None, None
-        if labels is not None:
+        if labels is not None: # 物理意义韩式要在这里面看!!!!!!!!!!!!!!!!!!!!!!!!!!!
             # First: create the matcher
             matcher = DetrHungarianMatcher(
                 class_cost=self.config.class_cost, bbox_cost=self.config.bbox_cost, giou_cost=self.config.giou_cost
-            )
+            ) # 匹配器.
             # Second: create the criterion
             losses = ["labels", "boxes", "cardinality"]
             criterion = DetrLoss(
@@ -1444,7 +1444,7 @@ class DetrForObjectDetection(DetrPreTrainedModel):
                 auxiliary_outputs = self._set_aux_loss(outputs_class, outputs_coord)
                 outputs_loss["auxiliary_outputs"] = auxiliary_outputs
 
-            loss_dict = criterion(outputs_loss, labels)
+            loss_dict = criterion(outputs_loss, labels)#核心代码.!
             # Fourth: compute total loss, as a weighted sum of the various losses
             weight_dict = {"loss_ce": 1, "loss_bbox": self.config.bbox_loss_coefficient}
             weight_dict["loss_giou"] = self.config.giou_loss_coefficient
@@ -1453,7 +1453,7 @@ class DetrForObjectDetection(DetrPreTrainedModel):
                 for i in range(self.config.decoder_layers - 1):
                     aux_weight_dict.update({k + f"_{i}": v for k, v in weight_dict.items()})
                 weight_dict.update(aux_weight_dict)
-            loss = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
+            loss = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)# 在这里面舍弃了loss_cardinal
 
         if not return_dict:
             if auxiliary_outputs is not None:
@@ -1886,7 +1886,7 @@ class DetrLoss(nn.Module):
         super().__init__()
         self.num_classes = num_classes
         self.matcher = matcher
-        self.eos_coef = eos_coef
+        self.eos_coef = eos_coef  # eos表示没有物体. 他的权重比例记做这个数值. 0.1
         self.losses = losses
         empty_weight = torch.ones(self.num_classes + 1)
         empty_weight[-1] = self.eos_coef
@@ -1905,9 +1905,9 @@ class DetrLoss(nn.Module):
         target_classes_o = torch.cat([t["class_labels"][J] for t, (_, J) in zip(targets, indices)])
         target_classes = torch.full(
             src_logits.shape[:2], self.num_classes, dtype=torch.int64, device=src_logits.device
-        )
+        )# 用空物体来填充. 空物体索引就是self.num_classes.
         target_classes[idx] = target_classes_o
-
+# self.empty_weight 对每一个类别做一个entropy权重. 这里面设置空物体比较小.因为空物体
         loss_ce = nn.functional.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
         losses = {"loss_ce": loss_ce}
 
@@ -1919,14 +1919,14 @@ class DetrLoss(nn.Module):
         Compute the cardinality error, i.e. the absolute error in the number of predicted non-empty boxes.
 
         This is not really a loss, it is intended for logging purposes only. It doesn't propagate gradients.
-        """
+        """#?这个是干啥的loss??????????? loss的基数.算他下限.
         logits = outputs["logits"]
         device = logits.device
-        tgt_lengths = torch.as_tensor([len(v["class_labels"]) for v in targets], device=device)
+        tgt_lengths = torch.as_tensor([len(v["class_labels"]) for v in targets], device=device) # 就是2个81标签的分类,所以这里面是标签数量,这里面是2.
         # Count the number of predictions that are NOT "no-object" (which is the last class)
-        card_pred = (logits.argmax(-1) != logits.shape[-1] - 1).sum(1)
+        card_pred = (logits.argmax(-1) != logits.shape[-1] - 1).sum(1)  # 这个是预测了多少个物体. 现在是5.
         card_err = nn.functional.l1_loss(card_pred.float(), tgt_lengths.float())
-        losses = {"cardinality_error": card_err}
+        losses = {"cardinality_error": card_err} # 所以这个计算的是预测物体数量的损失度. 有点特殊的loss
         return losses
 
     def loss_boxes(self, outputs, targets, indices, num_boxes):
@@ -1937,7 +1937,7 @@ class DetrLoss(nn.Module):
         are expected in format (center_x, center_y, w, h), normalized by the image size.
         """
         assert "pred_boxes" in outputs, "No predicted boxes found in outputs"
-        idx = self._get_src_permutation_idx(indices)
+        idx = self._get_src_permutation_idx(indices) # idx 第一个变量是batch索引,第二个是box索引.
         src_boxes = outputs["pred_boxes"][idx]
         target_boxes = torch.cat([t["boxes"][i] for t, (_, i) in zip(targets, indices)], dim=0)
 
@@ -1948,7 +1948,7 @@ class DetrLoss(nn.Module):
 
         loss_giou = 1 - torch.diag(
             generalized_box_iou(center_to_corners_format(src_boxes), center_to_corners_format(target_boxes))
-        )
+        ) # 得到iou之后,只拿对角线元素. 因为之前匈牙利算法已经匹配过了顺序. 只拿对角线就是最优解. 收敛最快.
         losses["loss_giou"] = loss_giou.sum() / num_boxes
         return losses
 
@@ -1988,7 +1988,7 @@ class DetrLoss(nn.Module):
         # permute predictions following indices
         batch_idx = torch.cat([torch.full_like(src, i) for i, (src, _) in enumerate(indices)])
         src_idx = torch.cat([src for (src, _) in indices])
-        return batch_idx, src_idx
+        return batch_idx, src_idx  # src 表示yhat
 
     def _get_tgt_permutation_idx(self, indices):
         # permute targets following indices
@@ -2122,10 +2122,10 @@ class DetrHungarianMatcher(nn.Module):
         """
         bs, num_queries = outputs["logits"].shape[:2]
 
-        # We flatten to compute the cost matrices in a batch
-        out_prob = outputs["logits"].flatten(0, 1).softmax(-1)  # [batch_size * num_queries, num_classes]
-        out_bbox = outputs["pred_boxes"].flatten(0, 1)  # [batch_size * num_queries, 4]
-
+        # We flatten to compute the cost matrices in a batch  # 最后一个维度归一化.显然要让一个物体在全分布上概率和=1
+        out_prob = outputs["logits"].flatten(0, 1).softmax(-1)  # [batch_size * num_queries, num_classes]  flatten, 从0维度开始拍平, 排到1维度,不包含1维度.所以就是第一个维度拍没. 所以结果是 100,92
+        out_bbox = outputs["pred_boxes"].flatten(0, 1)  # [batch_size * num_queries, 4] 结果 100,4
+#==============下面处理groundtrue 也是就是target
         # Also concat the target labels and boxes
         tgt_ids = torch.cat([v["class_labels"] for v in targets])
         tgt_bbox = torch.cat([v["boxes"] for v in targets])
@@ -2133,20 +2133,20 @@ class DetrHungarianMatcher(nn.Module):
         # Compute the classification cost. Contrary to the loss, we don't use the NLL,
         # but approximate it in 1 - proba[target class].
         # The 1 is a constant that doesn't change the matching, it can be ommitted.
-        class_cost = -out_prob[:, tgt_ids]
+        class_cost = -out_prob[:, tgt_ids]  #  分类的损失函数
 
-        # Compute the L1 cost between boxes
-        bbox_cost = torch.cdist(out_bbox, tgt_bbox, p=1)
+        # Compute the L1 cost between boxes  # Computes batched the p-norm distance between each pair of the two collections of row vectors.  就是互相都算一遍.
+        bbox_cost = torch.cdist(out_bbox, tgt_bbox, p=1)  # shape : 100,2
 
         # Compute the giou cost between boxes
         giou_cost = -generalized_box_iou(center_to_corners_format(out_bbox), center_to_corners_format(tgt_bbox))
-
+#shape: 100,2
         # Final cost matrix
         cost_matrix = self.bbox_cost * bbox_cost + self.class_cost * class_cost + self.giou_cost * giou_cost
         cost_matrix = cost_matrix.view(bs, num_queries, -1).cpu()
 
         sizes = [len(v["boxes"]) for v in targets]
-        indices = [linear_sum_assignment(c[i]) for i, c in enumerate(cost_matrix.split(sizes, -1))]
+        indices = [linear_sum_assignment(c[i]) for i, c in enumerate(cost_matrix.split(sizes, -1))]  # i 是batch_size里面对应的索引. 所以 c[i] 对应每一个batch的cost_矩阵.  # 返回indices是     row_ind, col_ind : array
         return [(torch.as_tensor(i, dtype=torch.int64), torch.as_tensor(j, dtype=torch.int64)) for i, j in indices]
 
 

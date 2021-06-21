@@ -8,7 +8,7 @@ image = Image.open(requests.get(url, stream=True).raw)
 feature_extractor = DetrFeatureExtractor.from_pretrained('facebook/detr-resnet-50') # 这个加载的是预处理的配置文件
 model = DetrForObjectDetection.from_pretrained('facebook/detr-resnet-50')
 # coco:box: "bbox": [x,y,width,height],左上角和长款.
-inputs = feature_extractor(images=[image], annotations=[{"annotations": [{"bbox": [383.99, 391.34, 92.74, 64.52]  , "area": 3488.0849000000007, "iscrowd": 0,  "category_id": 81},{"bbox": [2.99, 3.34, 4.74, 5.52]  , "area": 3488.0849000000007, "iscrowd": 0,  "category_id": 81}]  ,"image_id": 0}], return_tensors="pt")
+inputs = feature_extractor(images=[image], annotations=[{"annotations": [{"bbox": [383.99, 391.34, 92.74, 64.52]  , "area": 3488.0849000000007, "iscrowd": 0,  "category_id": 81},{"bbox": [2.99, 3.34, 4.74, 5.52]  , "area": 3488.0849000000007, "iscrowd": 0,  "category_id": 81}]  ,"image_id": 0}], return_tensors="pt")  # annotation里面是多个物体.  , 输入box 是左上点和宽高   跟coco的格式是一样的. 转化完后inputs里面的box是  (center_x, center_y, width, height)
 
 # image_id对应images里面图片的索引
 
