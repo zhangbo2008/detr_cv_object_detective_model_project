@@ -118,6 +118,9 @@ logits_hat=logits[(logits.max(2)[1]!=91) & (logits.max(2)[0]>yuzhi)]
 box_hat=bboxes[(logits.max(2)[1]!=91) & (logits.max(2)[0]>yuzhi)]
 classify_hat=logits_hat.argmax(-1) # box的分类结果
 classify_hat=[id2label[str(int(i))] for i in classify_hat]
+gailv =logits_hat.softmax(-1).max(-1)[0].tolist()
+print("识别到的物体是",classify_hat)
+print("概率是",gailv)
 import numpy as np
 import matplotlib
 matplotlib.use('agg')
@@ -138,14 +141,14 @@ for i in box_hat:
     ly=ly.item()
     ry=ry.item()
     outbox.append((lx,rx,ly,ry))
-print(outbox)
+# print(outbox)
 from PIL import ImageDraw
 image = image # 打开一张图片
 draw = ImageDraw.Draw(image) # 在上面画画
 
-for i in outbox:  # 注意画图需要的坐标顺序!!!!!!!!!!!!
+for dex,i in enumerate(outbox):  # 注意画图需要的坐标顺序!!!!!!!!!!!!
     draw.rectangle([i[0],i[2],i[1],i[3]], outline=(255,0,0)) # [左上角x，左上角y，右下角x，右下角y]，outline边框颜色
-
+    draw.text((i[1], i[2]), classify_hat[dex], fill=(255, 0, 0))
 image.save("tmp.png")
 # image.show()
 
