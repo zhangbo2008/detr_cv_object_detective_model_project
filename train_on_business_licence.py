@@ -4,7 +4,7 @@ import requests
 #============2021-06-18,16点39  先写到这里, 先去搞语音.回来再仔细debug一遍.
 url = '0001.jpg'
 image = Image.open(url)
-
+epoch=100 # 至少是1.
 feature_extractor = DetrFeatureExtractor.from_pretrained('facebook/detr-resnet-50') # 这个加载的是预处理的配置文件
 model = DetrForObjectDetection.from_pretrained('facebook/detr-resnet-50')
 # coco:box: "bbox": [x,y,width,height],左上角和长款.
@@ -43,7 +43,24 @@ optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.
 model.zero_grad()
 model.train()
 print('start_train')
-for _ in range(100):
+      # 看梯度的锁[i[1].requires_grad for i in list(model.named_parameters())]
+      # 看变量名[i[0] for i in list(model.named_parameters())]
+
+
+
+#=========是否进行前多少层的冻结.
+if 0:
+    a=[i[1] for i in list(model.named_parameters())[:318]] # ======直接最暴力的方法,全锁上,除了最后一层.的classify和bbox
+    for i in a:
+        i.requires_grad=False
+
+
+
+
+
+
+for _ in range(epoch):
+
     outputs = model(**inputs)
     loss = outputs[0]
     print(loss)
@@ -55,7 +72,7 @@ for _ in range(100):
 # model predicts bounding boxes and corresponding COCO classes
 
 
-
+outputs=outputs
 
 
 print("train_over")
@@ -158,7 +175,7 @@ id2label= {
     "90": "toothbrush"
   }
 yuzhi=0.7
-logits = outputs.logits
+logits = outputs.logits.softmax(-1)
 bboxes = outputs.pred_boxes
 
 usedex=logits.max(2)[1]!=91
@@ -167,7 +184,7 @@ logits_hat=logits[(logits.max(2)[1]!=91) & (logits.max(2)[0]>yuzhi)]
 box_hat=bboxes[(logits.max(2)[1]!=91) & (logits.max(2)[0]>yuzhi)]
 classify_hat=logits_hat.argmax(-1) # box的分类结果
 classify_hat=[id2label[str(int(i))] for i in classify_hat]
-gailv =logits_hat.softmax(-1).max(-1)[0].tolist()
+gailv =logits_hat.max(-1)[0].tolist()
 print("识别到的物体是",classify_hat)
 print("概率是",gailv)
 import numpy as np
