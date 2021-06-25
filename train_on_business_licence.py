@@ -9,7 +9,7 @@ feature_extractor = DetrFeatureExtractor.from_pretrained('facebook/detr-resnet-5
 model = DetrForObjectDetection.from_pretrained('facebook/detr-resnet-50')
 # coco:box: "bbox": [x,y,width,height],左上角和长款.
 
-
+#==========输入xmin,xmax,ymin,ymax
 x1x2y1y2=[79,207,161,183]
 coco_data=[x1x2y1y2[0],x1x2y1y2[2],x1x2y1y2[1]-x1x2y1y2[0],x1x2y1y2[3]-x1x2y1y2[2]]
 area2=(x1x2y1y2[1]-x1x2y1y2[0])*(x1x2y1y2[3]-x1x2y1y2[2])
