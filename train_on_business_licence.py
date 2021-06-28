@@ -13,7 +13,19 @@ model = DetrForObjectDetection.from_pretrained('facebook/detr-resnet-50')
 x1x2y1y2=[79,207,161,183]
 coco_data=[x1x2y1y2[0],x1x2y1y2[2],x1x2y1y2[1]-x1x2y1y2[0],x1x2y1y2[3]-x1x2y1y2[2]]
 area2=(x1x2y1y2[1]-x1x2y1y2[0])*(x1x2y1y2[3]-x1x2y1y2[2])
-inputs = feature_extractor(images=[image], annotations=[{"annotations": [{"bbox": coco_data,"area":area2,"iscrowd": 0,  "category_id": 1}]  ,"image_id": 0}], return_tensors="pt")  # annotation里面是多个物体.  , 输入box 是左上点和宽高   跟coco的格式是一样的. 转化完后inputs里面的box是  (center_x, center_y, width, height)
+inputs = feature_extractor(images=[image,image], annotations=[
+    {"annotations": [
+        {"bbox": coco_data,"area":area2,"iscrowd": 0,  "category_id": 1},
+                                                                         ]  ,"image_id": 0}
+,
+    {"annotations": [
+        {"bbox": coco_data, "area": area2, "iscrowd": 0, "category_id": 1},
+    ], "image_id": 1}
+
+
+
+
+], return_tensors="pt")  # annotation里面是多个物体.  , 输入box 是左上点和宽高   跟coco的格式是一样的. 转化完后inputs里面的box是  (center_x, center_y, width, height)
 
 # image_id对应images里面图片的索引
 
@@ -83,7 +95,7 @@ print("train_over")
 
 id2label= {
     "0": "N/A",
-    "1": "person",
+    "1": "code",
     "2": "bicycle",
     "3": "car",
     "4": "motorcycle",
@@ -183,7 +195,7 @@ usedex2=logits.max(2)[0]>yuzhi
 logits_hat=logits[(logits.max(2)[1]!=91) & (logits.max(2)[0]>yuzhi)]
 box_hat=bboxes[(logits.max(2)[1]!=91) & (logits.max(2)[0]>yuzhi)]
 classify_hat=logits_hat.argmax(-1) # box的分类结果
-classify_hat=[id2label[str(int(i))] for i in classify_hat]
+classify_hat=[id2label[str(int(i))] for i in classify_hat] # 翻译 对应分类物体名字.
 gailv =logits_hat.max(-1)[0].tolist()
 print("识别到的物体是",classify_hat)
 print("概率是",gailv)

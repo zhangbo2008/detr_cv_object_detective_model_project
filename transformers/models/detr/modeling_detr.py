@@ -2018,7 +2018,7 @@ class DetrLoss(nn.Module):
         outputs_without_aux = {k: v for k, v in outputs.items() if k != "auxiliary_outputs"}
 
         # Retrieve the matching between the outputs of the last layer and the targets
-        indices = self.matcher(outputs_without_aux, targets)
+        indices = self.matcher(outputs_without_aux, targets) # 100 query    2个物体. 距离哪个近, 就让query学到哪个物体的答案即可.
 
         # Compute the average number of target boxes accross all nodes, for normalization purposes
         num_boxes = sum(len(t["class_labels"]) for t in targets)
@@ -2143,7 +2143,7 @@ class DetrHungarianMatcher(nn.Module):
 #shape: 100,2
         # Final cost matrix
         cost_matrix = self.bbox_cost * bbox_cost + self.class_cost * class_cost + self.giou_cost * giou_cost
-        cost_matrix = cost_matrix.view(bs, num_queries, -1).cpu()
+        cost_matrix = cost_matrix.view(bs, num_queries, -1).cpu() # 注意bs 一起算了.
 
         sizes = [len(v["boxes"]) for v in targets]
         indices = [linear_sum_assignment(c[i]) for i, c in enumerate(cost_matrix.split(sizes, -1))]  # i 是batch_size里面对应的索引. 所以 c[i] 对应每一个batch的cost_矩阵.  # 返回indices是     row_ind, col_ind : array
