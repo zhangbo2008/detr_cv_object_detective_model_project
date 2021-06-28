@@ -1,5 +1,5 @@
 from transformers import DetrFeatureExtractor, DetrForObjectDetection
-from PIL import Image
+from PIL import Image   # cnn + transformer 目标检测任务.
 import requests
 id2label= {
     "0": "N/A",
@@ -112,7 +112,7 @@ outputs = model(**inputs)
 logits = outputs.logits
 bboxes = outputs.pred_boxes
 
-usedex=logits.max(2)[1]!=91
+usedex=logits.max(2)[1]!=91  # ========91是背景分类, 表示空物体.
 usedex2=logits.max(2)[0]>yuzhi
 logits_hat=logits[(logits.max(2)[1]!=91) & (logits.max(2)[0]>yuzhi)]
 box_hat=bboxes[(logits.max(2)[1]!=91) & (logits.max(2)[0]>yuzhi)]
@@ -128,7 +128,7 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
 
-
+#========根据box, 画图片可视化结果.  网络输出出来的结果是, box 的中心点x,y 和 w ,h 的百分比.
 # lx, ly , rx ,ry    image.size   box_hat
 outbox=[]
 for i in box_hat:

@@ -530,7 +530,7 @@ class DetrFeatureExtractor(FeatureExtractionMixin, ImageFeatureExtractionMixin):
                 )
 
         # Check that masks_path has a valid type
-        if masks_path is not None:  # 分割任务的标签.
+        if masks_path is not None:  # 分割任务的标签. 抠图任务时候启用.
             if self.format == "coco_panoptic":
                 if isinstance(masks_path, pathlib.Path):
                     valid_masks_path = True

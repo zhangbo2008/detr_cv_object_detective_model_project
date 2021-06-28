@@ -1215,7 +1215,7 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
         model.tie_weights()  # 是否需要embed 权重绑定, 我们也不需要.
 
         # Set model in evaluation mode to deactivate DropOut modules by default
-        model.eval()
+        model.eval() # 锁定layner norm
 
         if output_loading_info: # 是否输出日志.我们不需要
             loading_info = {

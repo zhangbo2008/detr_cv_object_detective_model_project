@@ -541,7 +541,7 @@ class DetrAttention(nn.Module):
         if is_cross_attention: # 交叉时候用的之前状态,
             # cross_attentions
             key_states = self._shape(self.k_proj(key_value_states), -1, bsz)
-            value_states = self._shape(self.v_proj(key_value_states_original), -1, bsz)# 注意这个地方value不使用位置编码........有点意思这个地方.感觉都无所谓吧.
+            value_states = self._shape(self.v_proj(key_value_states_original), -1, bsz)# 注意这个地方value不使用位置编码........有点意思这个地方.感觉都无所谓吧.===== 输出的v 是不带位置信息的.
         else:
             # self_attention  # 自注意力用的隐含来算key value
             key_states = self._shape(self.k_proj(hidden_states), -1, bsz)
@@ -723,7 +723,7 @@ class DetrDecoderLayer(nn.Module):
         residual = hidden_states   #query 的状态. 表示输出.  推荐看最好的transformer注释:  http://jalammar.github.io/illustrated-transformer/  这个是图解. 核心就是看 The Decoder Side 下面2个动图. 很明显在decodeer里面query表示的就是tgt语言. 他的图第一个没画好. query应该表示<s> 他没写. 表示语句的开始.然后翻译出来下一个I.然后I当输入再跟之前的key, value算出来am. 因为 key value都是一直使用encoder的信息,所以decoder时候key,value 不用重新算.每次都一样.
 
         # Self Attention  # 先对输入的初始化空白图片,自己算注意力. 遵循经典transformer思路.
-        hidden_states, self_attn_weights = self.self_attn(
+        hidden_states, self_attn_weights = self.self_attn( # 为什么还要先算自注意力. 算的是 100个query之间的注意力. 翻译任务里面就是目标语言  i am pupil ---> 我是小学生.   这里面decoder 的自注意力表示的是 我是小学生各个汉子之间的注意力对最后输出的影响.
             hidden_states=hidden_states,
             position_embeddings=query_position_embeddings,
             attention_mask=attention_mask,
@@ -738,11 +738,11 @@ class DetrDecoderLayer(nn.Module):
         cross_attn_weights = None
         if encoder_hidden_states is not None: # 跟编码信息做注意力
             residual = hidden_states
-
-            hidden_states, cross_attn_weights = self.encoder_attn( # 就是 100的query  去850里面算注意力.
+#====重点.========只不过函数名用的encoder,本质上做的是 交叉注意力.decoder
+            hidden_states, cross_attn_weights = self.encoder_attn( # 就是 100的query  去850里面算注意力.#=========================整个的最核心就是理解q 是什么东西, key,value 是图片.
                 hidden_states=hidden_states,
                 position_embeddings=query_position_embeddings,
-                key_value_states=encoder_hidden_states,  # 编码信息提供给key value来用.
+                key_value_states=encoder_hidden_states,  # 编码信息提供给key value来用. key, value 走的是原始图片.  query 走的是初始化的随机100个向量.
                 attention_mask=encoder_attention_mask,
                 key_value_position_embeddings=position_embeddings,
                 output_attentions=output_attentions,
@@ -1290,9 +1290,9 @@ class DetrModel(DetrPreTrainedModel):
                 attentions=encoder_outputs[2] if len(encoder_outputs) > 2 else None,
             )
 #==============下面是解码部分.=========通过这部分代码. 理解q 是 tgt k 是src
-        # Fifth, sent query embeddings + position embeddings through the decoder (which is conditioned on the encoder output)
+        # Fifth, sent query embeddings + position embeddings through the decoder (which is conditioned on the encoder output)# ===============整个网络的难点!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!重点.  nlp.  query : 100 个初始化,然后返回100个结果. 每一个结果都代表检测出了一个物体.
         query_position_embeddings = self.query_position_embeddings.weight.unsqueeze(0).repeat(batch_size, 1, 1)
-        queries = torch.zeros_like(query_position_embeddings)
+        queries = torch.zeros_like(query_position_embeddings) #因为query之间没有位置概念.
 
         # decoder outputs consists of (dec_features, dec_hidden, dec_attn)
         decoder_outputs = self.decoder(
@@ -1402,7 +1402,7 @@ class DetrForObjectDetection(DetrPreTrainedModel):
         # First, sent images through DETR base model to obtain encoder + decoder outputs
         outputs = self.model(
             pixel_values,
-            pixel_mask=pixel_mask,
+            pixel_mask=pixel_mask,  # swin transformer
             decoder_attention_mask=decoder_attention_mask,
             encoder_outputs=encoder_outputs,
             inputs_embeds=inputs_embeds,
