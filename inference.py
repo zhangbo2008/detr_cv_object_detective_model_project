@@ -132,7 +132,7 @@ import matplotlib.pyplot as plt
 # lx, ly , rx ,ry    image.size   box_hat
 outbox=[]
 for i in box_hat:
-    lx=(i[0]-i[2]/2).clamp(0,1)*image.size[0]
+    lx=(i[0]-i[2]/2).clamp(0,1)*image.size[0] #==========一定要根据我的写法理解宽高和矩阵里面反过来.这里面要看好0,1 哪个是宽,哪个是高.
     rx=(i[0]+i[2]/2).clamp(0,1)*image.size[0]
     ly=(i[1]-i[3]/2).clamp(0,1)*image.size[1]
     ry=(i[1]+i[3]/2).clamp(0,1)*image.size[1]
