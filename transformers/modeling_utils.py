@@ -1078,6 +1078,14 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
             )
         else:
             model_kwargs = kwargs
+
+        #=================直接改成我们要的sahpe#=======================
+
+
+
+
+
+
         #======================================自定义config,可以在这行的下面直接改参数!!!!!!!!!!!!!!!!!!
         # Load model
         if pretrained_model_name_or_path is not None:
@@ -1348,8 +1356,9 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
             )
         if len(error_msgs) > 0:
             error_msg = "\n\t".join(error_msgs)
-            raise RuntimeError(f"Error(s) in loading state_dict for {model.__class__.__name__}:\n\t{error_msg}")
 
+            print(f"\033[41m Error(s) in loading state_dict for {model.__class__.__name__}:\n\t{error_msg}\033[0m") #=======不用管它,因为pytorch没有也会初始化一个数值.========改成pass即可.
+            pass # ===========直接过复发复制的东西.
         return model, missing_keys, unexpected_keys, error_msgs
 
     def retrieve_modules_from_names(self, names, add_prefix=False, remove_prefix=False):

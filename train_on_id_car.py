@@ -275,12 +275,14 @@ train_loader = DataLoader(dataset=dealDataset,
                           )
 
 
-
-url = '0001.jpg'
-image = Image.open(url)
+#
+# url = '0001.jpg'
+# image = Image.open(url)
 epoch=100 # 至少是1.
 feature_extractor = DetrFeatureExtractor.from_pretrained('facebook/detr-resnet-50') # 这个加载的是预处理的配置文件
-model = DetrForObjectDetection.from_pretrained('facebook/detr-resnet-50')
+
+#==========改变分类数量.======模型名字永远不要动,后面配自己的参数,经过自定义即可改变网络结构.
+model = DetrForObjectDetection.from_pretrained('facebook/detr-resnet-50',config='config_for_id_card.json')
 # coco:box: "bbox": [x,y,width,height],左上角和长款.
 
 #==========输入xmin,xmax,ymin,ymax
