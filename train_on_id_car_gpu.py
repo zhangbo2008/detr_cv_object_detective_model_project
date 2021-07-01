@@ -1,6 +1,7 @@
 #===========第一步刷数据.把voc数据刷成我们要的
 import sys
-
+epoch=100 # 至少是1.
+batch_size = 3
 sys.path.append("..")
 import xml.etree.ElementTree as ET
 # coding=utf-8
@@ -151,8 +152,8 @@ def parse_voc_annotation(
             # print(annotation)
             f.write(annotation)
     return len(image_ids)
-
-if 1:
+import os
+if not os.path.exists('train_annotation.txt'):
     if __name__ == "__main__":
         # train_set :  VOC2007_trainval 和 VOC2012_trainval
         train_data_path_2007 = os.path.join(
@@ -268,7 +269,7 @@ class DealDataset2(Dataset):
 
 # 下面是true_shuju:
 dealDataset = DealDataset2()
-batch_size = 2
+
 train_loader = DataLoader(dataset=dealDataset,
                           batch_size=batch_size,
                           shuffle=True,
@@ -279,20 +280,21 @@ train_loader = DataLoader(dataset=dealDataset,
 #
 # url = '0001.jpg'
 # image = Image.open(url)
-epoch=100 # 至少是1.
+
 feature_extractor = DetrFeatureExtractor.from_pretrained('facebook/detr-resnet-50') # 这个加载的是预处理的配置文件
 
 #==========改变分类数量.======模型名字永远不要动,后面配自己的参数,经过自定义即可改变网络结构.
 model = DetrForObjectDetection.from_pretrained('facebook/detr-resnet-50',config='config_for_id_card.json')
 # coco:box: "bbox": [x,y,width,height],左上角和长款.
+
 try:
-    model.load('1.pth')
+    model=torch.load('1.pth')
     print("加载了模型1.pth")
 except:
     print("没有加载模型")
 #==========输入xmin,xmax,ymin,ymax
 
-
+model.cuda()
 
 
 #=============写train
@@ -330,7 +332,7 @@ if 0:
         i.requires_grad=False
 
 
-
+import cv2
 
 
 
@@ -340,6 +342,7 @@ for _ in range(epoch):
             tmp = i
             print(1)
             images=[Image.open(url) for url in tmp[0]]
+            # images=[torch.tensor(url).cuda() for url in images]
             annos=[j for j in tmp[1]]
             annos2=[]
             for index,k in enumerate(annos):
@@ -352,6 +355,11 @@ for _ in range(epoch):
                     x1x2y1y2 = [box[0], box[2], box[1], box[3]]
                     coco_data = [x1x2y1y2[0], x1x2y1y2[2], x1x2y1y2[1] - x1x2y1y2[0], x1x2y1y2[3] - x1x2y1y2[2]]
                     area2 = (x1x2y1y2[1] - x1x2y1y2[0]) * (x1x2y1y2[3] - x1x2y1y2[2])
+                    # coco_data=torch.tensor(coco_data).cuda()
+                    # category=torch.tensor(category).cuda()
+                    # area2=torch.tensor(area2).cuda()
+
+
                     annos3.append( {"bbox": coco_data, "area": area2, "iscrowd": 0, "category_id": category})
                     # a={"annotations": [
                     #    ,
@@ -386,9 +394,15 @@ for _ in range(epoch):
 
 
             # annotation里面是多个物体.  , 输入box 是左上点和宽高   跟coco的格式是一样的. 转化完后inputs里面的box是  (center_x, center_y, width, height)
-
+            inputs.data['pixel_values']=inputs.data['pixel_values'].cuda()
+            inputs.data['pixel_mask']=inputs.data['pixel_mask'].cuda()
+            for dex3 in range(len(inputs.data['labels'])):
+                for nn in inputs.data['labels'][dex3]:
+                    inputs.data['labels'][dex3][nn]= inputs.data['labels'][dex3][nn].cuda() #这个地方要赋值才行. .cuda不是传地址.
+            # for nn in inputs.data['labels'][1]:
+            #     inputs.data['labels'][1][nn]=inputs.data['labels'][1][nn].cuda()
             # image_id对应images里面图片的索引
-
+            # inputs.cuda()
             outputs = model(**inputs)
             loss = outputs[0]
             print(loss)
@@ -398,7 +412,7 @@ for _ in range(epoch):
             model.zero_grad()
 #===========然后玩loss就行了.
 # model predicts bounding boxes and corresponding COCO classes
-model.save('1.pth')
+torch.save(model,'1.pth')
 print("模型存在了1.pth")
 
 outputs=outputs
